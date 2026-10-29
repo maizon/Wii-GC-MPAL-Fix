@@ -46,14 +46,20 @@ jobs:
           sudo install -m 644 /tmp/devkitppc-rules/wii_rules /tmp/devkitppc-rules/base_rules /tmp/devkitppc-rules/base_tools /opt/devkitpro/devkitPPC/
           ls -l /opt/devkitpro/devkitPPC/{wii_rules,base_rules,base_tools}
           ls -l /opt/devkitpro/tools/bin/elf2dol /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc || true
-      - name: Install general-tools for bin2s and elf2dol
+      - name: Install general-tools and gamecube-tools for bin2s and elf2dol
         run: |
           set -euo pipefail
           curl -fLsS --retry 3 'https://wii.leseratte10.de/devkitPro/other-stuff/general-tools/general-tools-1.2.0-1-linux.pkg.tar.xz' -o /tmp/nin-toolchain/general-tools.tar.xz
+          curl -fLsS --retry 3 'https://wii.leseratte10.de/devkitPro/other-stuff/gamecube-tools/gamecube-tools-1.0.2-1-linux.pkg.tar.xz' -o /tmp/nin-toolchain/gamecube-tools.tar.xz
+          echo "Binary archive entries:"
+          tar -tJf /tmp/nin-toolchain/general-tools.tar.xz | grep -E 'bin2s|elf2dol|/bin/' || true
+          tar -tJf /tmp/nin-toolchain/gamecube-tools.tar.xz | grep -E 'bin2s|elf2dol|/bin/' || true
           sudo tar -xJf /tmp/nin-toolchain/general-tools.tar.xz -C /
+          sudo tar -xJf /tmp/nin-toolchain/gamecube-tools.tar.xz -C /
+          echo "Installed tool binaries:"
+          find /opt/devkitpro -type f \( -name bin2s -o -name elf2dol \) -print
           test -x /opt/devkitpro/tools/bin/bin2s
           test -x /opt/devkitpro/tools/bin/elf2dol
-          /opt/devkitpro/tools/bin/bin2s --help >/dev/null 2>&1 || true
       - name: Compile Nintendont
         working-directory: upstream
         env:
