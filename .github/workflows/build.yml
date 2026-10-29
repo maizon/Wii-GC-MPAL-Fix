@@ -1,0 +1,60 @@
+name: Build PAL-M 240p
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'overrides/**'
+      - '.github/workflows/build.yml'
+      - 'README.md'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout MPAL 240p overrides
+        uses: actions/checkout@v4
+      - name: Fetch Nintendont source
+        run: |
+          git clone --depth 1 https://github.com/FIX94/Nintendont.git upstream
+          (cd overrides && tar cf - .) | (cd upstream && tar xf -)
+          grep -q 'TVMpal240Ds' upstream/loader/source/main.c
+          grep -q 'VI_TVMODE_MPAL_DS' upstream/kernel/Patch.c
+          grep -q 'NIN_SETTINGS_MPAL_240P' upstream/loader/source/menu.c
+      - name: Install historical devkitPro toolchain
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/nin-toolchain
+          curl -fLsS --retry 3 'https://wii.leseratte10.de/devkitPro/devkitARM/r53%20(2019-06)/devkitARM-r53-1-linux.pkg.tar.xz' -o /tmp/nin-toolchain/arm.tar.xz
+          curl -fLsS --retry 3 'https://wii.leseratte10.de/devkitPro/devkitPPC/r35/devkitPPC-r35-1-linux.pkg.tar.xz' -o /tmp/nin-toolchain/ppc.tar.xz
+          curl -fLsS --retry 3 'https://wii.leseratte10.de/devkitPro/libogc/libogc_1.8.23%20(2019-10-02)/libogc-1.8.23-1-any.pkg.tar.xz' -o /tmp/nin-toolchain/libogc.tar.xz
+          sha256sum /tmp/nin-toolchain/*.tar.xz
+          for archive in /tmp/nin-toolchain/*.tar.xz; do
+            sudo tar -xJf "$archive" -C /
+          done
+      - name: Compile Nintendont
+        working-directory: upstream
+        env:
+          DEVKITPRO: /opt/devkitpro
+          DEVKITARM: /opt/devkitpro/devkitARM
+          DEVKITPPC: /opt/devkitpro/devkitPPC
+        run: |
+          set -euo pipefail
+          export PATH="$DEVKITARM/bin:$DEVKITPPC/bin:$PATH"
+          make forced -j2
+          test -s loader/loader.dol
+      - name: Package boot.dol
+        run: |
+          mkdir -p artifact
+          cp upstream/loader/loader.dol artifact/boot.dol
+          echo "Experimental: PAL-M 240p. Not tested on real Wii hardware." > artifact/NOTICE.txt
+      - name: Upload experimental homebrew
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nintendont-MPAL-240p-experimental
+          path: artifact/
+          if-no-files-found: error
