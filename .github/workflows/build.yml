@@ -32,10 +32,20 @@ jobs:
           curl -fLsS --retry 3 'https://wii.leseratte10.de/devkitPro/devkitARM/r53%20(2019-06)/devkitARM-r53-1-linux.pkg.tar.xz' -o /tmp/nin-toolchain/arm.tar.xz
           curl -fLsS --retry 3 'https://wii.leseratte10.de/devkitPro/devkitPPC/r35/devkitPPC-r35-1-linux.pkg.tar.xz' -o /tmp/nin-toolchain/ppc.tar.xz
           curl -fLsS --retry 3 'https://wii.leseratte10.de/devkitPro/libogc/libogc_1.8.23%20(2019-10-02)/libogc-1.8.23-1-any.pkg.tar.xz' -o /tmp/nin-toolchain/libogc.tar.xz
-          sha256sum /tmp/nin-toolchain/*.tar.xz
+          # Fixed checksums from the toolchain archives actually fetched in run 40863935480.
+          echo '140d217a747c21a46236a6675b2592b54397e53c56dd8aa91aaf73bd19fa9599  /tmp/nin-toolchain/arm.tar.xz' | sha256sum -c -
+          echo '2916d431913b00d93dd0570d2d650cb1ec13e75422933e0f5726528d6a181658  /tmp/nin-toolchain/ppc.tar.xz' | sha256sum -c -
+          echo 'e5b61a2e7589ab95e321cae30bbf1511fbe4729f3120e782201eebf8514c6707  /tmp/nin-toolchain/libogc.tar.xz' | sha256sum -c -
           for archive in /tmp/nin-toolchain/*.tar.xz; do
             sudo tar -xJf "$archive" -C /
           done
+      - name: Install matching devkitPPC build rules (missing from compiler archive)
+        run: |
+          set -euo pipefail
+          git clone --quiet --depth 1 --branch v1.2.1 https://github.com/devkitPro/devkitppc-rules.git /tmp/devkitppc-rules
+          sudo install -m 644 /tmp/devkitppc-rules/wii_rules /tmp/devkitppc-rules/base_rules /tmp/devkitppc-rules/base_tools /opt/devkitpro/devkitPPC/
+          ls -l /opt/devkitpro/devkitPPC/{wii_rules,base_rules,base_tools}
+          ls -l /opt/devkitpro/tools/bin/elf2dol /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc || true
       - name: Compile Nintendont
         working-directory: upstream
         env:
@@ -45,7 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           export PATH="$DEVKITARM/bin:$DEVKITPPC/bin:$PATH"
-          make forced -j2
+          make -j2
           test -s loader/loader.dol
       - name: Package boot.dol
         run: |
