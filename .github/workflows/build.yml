@@ -46,6 +46,14 @@ jobs:
           sudo install -m 644 /tmp/devkitppc-rules/wii_rules /tmp/devkitppc-rules/base_rules /tmp/devkitppc-rules/base_tools /opt/devkitpro/devkitPPC/
           ls -l /opt/devkitpro/devkitPPC/{wii_rules,base_rules,base_tools}
           ls -l /opt/devkitpro/tools/bin/elf2dol /opt/devkitpro/devkitPPC/bin/powerpc-eabi-gcc || true
+      - name: Install general-tools for bin2s and elf2dol
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 3 'https://wii.leseratte10.de/devkitPro/other-stuff/general-tools/general-tools-1.2.0-1-linux.pkg.tar.xz' -o /tmp/nin-toolchain/general-tools.tar.xz
+          sudo tar -xJf /tmp/nin-toolchain/general-tools.tar.xz -C /
+          test -x /opt/devkitpro/tools/bin/bin2s
+          test -x /opt/devkitpro/tools/bin/elf2dol
+          /opt/devkitpro/tools/bin/bin2s --help >/dev/null 2>&1 || true
       - name: Compile Nintendont
         working-directory: upstream
         env:
